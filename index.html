@@ -1,0 +1,565 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SwitchMath</title>
+<style>
+:root{--bg:#f6f7fb;--card:#fff;--ink:#17202a;--muted:#5f6b7a;--line:#dfe3ea;--scan:#ffd54f;--scan-ink:#4a3a00;--focus:#3b82f6;--accent:#1f6feb;--mathsize:46px}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+header{display:flex;align-items:center;gap:14px;padding:12px 20px;border-bottom:1px solid var(--line);background:var(--card);flex-wrap:wrap}
+h1{margin:0;font-size:22px;letter-spacing:-.3px}
+h1 small{font-weight:400;color:var(--muted);font-size:13px;margin-left:8px}
+#status{flex:1;font-size:15px;color:var(--muted);min-width:200px}
+#presses{font-variant-numeric:tabular-nums;font-size:14px;padding:4px 12px;border:1px solid var(--line);border-radius:999px;background:#fff}
+main{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:18px;padding:18px 20px}
+@media(max-width:900px){main{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
+.card h2{margin:0 0 10px;font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--muted)}
+#canvas{min-height:220px;display:flex;align-items:center;justify-content:center;font-family:"Cambria Math","STIX Two Math","Latin Modern Math","Times New Roman",serif;font-size:var(--mathsize);padding:34px 16px;line-height:1.15;overflow-x:auto}
+.n{display:inline-block;vertical-align:middle;border-radius:6px;padding:0 2px}
+.n.focus{outline:3px solid var(--focus);outline-offset:3px}
+.row{display:inline-flex;align-items:center;padding:3px 5px;border-radius:8px;border:2px solid transparent}
+.row.focus{outline:none;border-color:var(--focus);background:rgba(59,130,246,.07)}
+.row.empty{min-width:1em;min-height:1.1em;border:2px dashed #b8c0cc;justify-content:center;color:#b8c0cc;font-size:.75em}
+.row.editing{min-width:.8em;min-height:1.1em;border-style:dashed;border-color:var(--accent)}
+.var{font-style:italic}
+.op{padding:0 .18em}
+.frac{display:inline-flex;flex-direction:column;align-items:center;margin:0 .12em}
+.frac>.ftop{border-bottom:2.5px solid currentColor;padding:0 .18em .05em;font-size:.9em}
+.frac>.fbot{padding:.05em .18em 0;font-size:.9em}
+.pow{display:inline-flex;align-items:flex-start}
+.pow>.exp{font-size:.6em;position:relative;top:-.5em;margin-left:.06em}
+.sqrt{display:inline-flex;align-items:stretch}
+.sqrt>.rad{font-size:1.35em;line-height:.8;align-self:flex-start;margin-right:-.06em}
+.sqrt>.radicand{border-top:2.5px solid currentColor;padding:.04em .14em 0}
+.scan{background:var(--scan)!important;color:var(--scan-ink)!important;box-shadow:0 0 0 3px var(--scan)}
+.caret{display:inline-block;width:3px;height:1em;background:var(--accent);margin:0 2px;animation:blink 1s steps(1) infinite;border-radius:2px}
+@keyframes blink{50%{opacity:0}}
+#menu{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;min-height:48px;align-content:flex-start}
+.chip{padding:9px 14px;border-radius:10px;border:2px solid var(--line);background:#fff;font-size:17px}
+.chip.cmd{color:var(--accent)}
+.chip.scan{border-color:#e0b000}
+.prow{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:6px 8px;border-radius:12px;border:2px solid transparent;width:100%}
+.prow.scan{border-color:#e0b000;background:#fff6d6!important;box-shadow:none}
+.plabel{font-size:12px;color:var(--muted);width:70px;text-transform:uppercase;letter-spacing:.5px}
+.key{min-width:44px;padding:8px 12px;text-align:center;border-radius:10px;border:2px solid var(--line);background:#fff;font-size:21px;font-family:"Cambria Math","STIX Two Math","Times New Roman",serif}
+.key.cmd{font-family:inherit;font-size:15px;color:var(--accent)}
+.key.scan{border-color:#e0b000}
+#latex{width:100%;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:15px;background:#0f172a;color:#e2e8f0;padding:12px;border-radius:10px;border:0;min-height:64px;resize:vertical}
+aside label{display:block;font-size:13px;color:var(--muted);margin:12px 0 4px}
+aside select,aside input[type=range]{width:100%;font:inherit}
+aside .check{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:14px}
+aside button{width:100%;padding:8px;border-radius:10px;border:1px solid var(--line);background:#fff;cursor:pointer;margin-top:8px;font:inherit}
+#switch{padding:24px;font-size:20px;font-weight:700;border-radius:14px;border:0;background:var(--accent);color:#fff;cursor:pointer;margin-top:4px;user-select:none;touch-action:none}
+#switch:active{transform:scale(.98)}
+.help{font-size:13px;color:var(--muted);line-height:1.5;margin:10px 0 0}
+kbd{border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:0 6px;background:#fff;font-family:inherit;font-size:12px}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#17202a;color:#fff;padding:10px 16px;border-radius:10px;font-size:15px;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.show{opacity:1}
+footer{padding:10px 20px 20px;color:var(--muted);font-size:12px}
+</style>
+</head>
+<body>
+<header>
+  <h1>SwitchMath <small>equation editing with one switch</small></h1>
+  <div id="status" aria-live="polite"></div>
+  <div id="presses">Presses: 0</div>
+</header>
+
+<main>
+  <div style="display:grid;gap:18px;min-width:0">
+    <section class="card">
+      <h2>Expression</h2>
+      <div id="canvas"></div>
+    </section>
+    <section class="card">
+      <h2>Choices (the yellow one is selected when you press)</h2>
+      <div id="menu"></div>
+    </section>
+    <section class="card">
+      <h2>LaTeX (live)</h2>
+      <textarea id="latex" readonly rows="2" spellcheck="false"></textarea>
+    </section>
+  </div>
+
+  <aside class="card">
+    <h2>Switch</h2>
+    <button id="switch" type="button">PRESS</button>
+    <p class="help" id="modehelp"></p>
+
+    <h2 style="margin-top:18px">Setup (for a helper)</h2>
+    <label for="mode">Scanning mode</label>
+    <select id="mode">
+      <option value="auto">Auto-scan: highlight moves by itself, press to choose</option>
+      <option value="step">Step-scan: short press = next, hold = choose</option>
+    </select>
+    <label for="speed">Scan speed: <span id="speedv"></span></label>
+    <input id="speed" type="range" min="300" max="2500" step="100">
+    <label for="hold">Hold time to choose (step-scan): <span id="holdv"></span></label>
+    <input id="hold" type="range" min="300" max="1500" step="50">
+    <label for="size">Math size</label>
+    <input id="size" type="range" min="28" max="80" step="2">
+    <div class="check"><input id="audio" type="checkbox"><label for="audio" style="margin:0">Speak each choice aloud</label></div>
+    <label for="example">Load an expression</label>
+    <select id="example">
+      <option value="fraction">(x + 1) / 2 = y</option>
+      <option value="quadratic">quadratic formula</option>
+      <option value="empty">start from blank</option>
+    </select>
+    <button id="load" type="button">Load</button>
+    <button id="resetp" type="button">Reset press counter</button>
+  </aside>
+</main>
+
+<footer>SwitchMath runs entirely in this file — no internet, no account, nothing leaves the computer. The switch is the <kbd>Space</kbd> bar, <kbd>Enter</kbd>, the PRESS button, or any switch interface that sends a key.</footer>
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+'use strict';
+
+/* ================= expression tree =================
+   row   { items: [...] }                 a horizontal sequence
+   num   { text }   var { text }   op { sym }      leaves
+   frac  { num: row, den: row }
+   pow   { base: row, exp: row }
+   sqrt  { child: row }
+   paren { child: row }
+*/
+let nextId = 1;
+const node  = (type, props = {}) => Object.assign({ id: nextId++, type }, props);
+const row   = (items = []) => node('row', { items });
+const num   = t => node('num', { text: String(t) });
+const vr    = t => node('var', { text: t });
+const op    = s => node('op', { sym: s });
+const frac  = (n, d) => node('frac', { num: n, den: d });
+const pow   = (b, e) => node('pow', { base: b, exp: e });
+const sqrt  = c => node('sqrt', { child: c });
+const paren = c => node('paren', { child: c });
+
+const EXAMPLES = {
+  fraction: () => row([frac(row([vr('x'), op('+'), num(1)]), row([num(2)])), op('='), vr('y')]),
+  quadratic: () => row([vr('x'), op('='), frac(
+      row([op('−'), vr('b'), op('+'), sqrt(row([pow(row([vr('b')]), row([num(2)])), op('−'), num(4), vr('a'), vr('c')]))]),
+      row([num(2), vr('a')]))]),
+  empty: () => row([]),
+};
+
+function children(n) {
+  switch (n.type) {
+    case 'row': return n.items;
+    case 'frac': return [n.num, n.den];
+    case 'pow': return [n.base, n.exp];
+    case 'sqrt': case 'paren': return [n.child];
+    default: return [];
+  }
+}
+const isLeaf = n => n.type === 'num' || n.type === 'var' || n.type === 'op';
+function subrows(n) {
+  switch (n.type) {
+    case 'frac': return [['numerator', n.num], ['denominator', n.den]];
+    case 'pow': return [['base', n.base], ['exponent', n.exp]];
+    case 'sqrt': return [['inside the root', n.child]];
+    case 'paren': return [['inside the parentheses', n.child]];
+    default: return [];
+  }
+}
+
+let root, index;
+function reindex() {
+  index = new Map();
+  (function walk(n, parent) { index.set(n.id, { node: n, parent }); children(n).forEach(c => walk(c, n)); })(root, null);
+}
+const byId = id => (index.get(id) || {}).node;
+const parentOf = id => (index.get(id) || {}).parent;
+const positionIn = (r, id) => r.items.findIndex(x => x.id === id);
+function emptyRows() {
+  const out = [];
+  (function walk(n) { if (n.type === 'row' && !n.items.length) out.push(n); children(n).forEach(walk); })(root);
+  return out;
+}
+
+/* ================= LaTeX + speech text ================= */
+const OP_TEX = { '+': '+', '−': '-', '×': '\\times', '=': '=' };
+const OP_SAY = { '+': 'plus', '−': 'minus', '×': 'times', '=': 'equals' };
+function tex(n) {
+  switch (n.type) {
+    case 'row': return n.items.map(tex).join(' ');
+    case 'num': case 'var': return n.text;
+    case 'op': return OP_TEX[n.sym] || n.sym;
+    case 'frac': return `\\frac{${tex(n.num)}}{${tex(n.den)}}`;
+    case 'pow': {
+      const simple = n.base.items.length === 1;
+      return `${simple ? tex(n.base) : '{' + tex(n.base) + '}'}^{${tex(n.exp)}}`;
+    }
+    case 'sqrt': return `\\sqrt{${tex(n.child)}}`;
+    case 'paren': return `\\left(${tex(n.child)}\\right)`;
+  }
+  return '';
+}
+function describe(n) {
+  switch (n.type) {
+    case 'row': return n.items.length ? n.items.map(describe).join(' ') : 'blank';
+    case 'num': case 'var': return n.text;
+    case 'op': return OP_SAY[n.sym] || n.sym;
+    case 'frac': return `fraction, ${describe(n.num)}, over, ${describe(n.den)}`;
+    case 'pow': return `${describe(n.base)} to the power ${describe(n.exp)}`;
+    case 'sqrt': return `square root of ${describe(n.child)}`;
+    case 'paren': return `open parenthesis ${describe(n.child)} close parenthesis`;
+  }
+  return '';
+}
+function label(n) {
+  switch (n.type) {
+    case 'num': case 'var': return n.text;
+    case 'op': return n.sym;
+    case 'frac': return 'fraction';
+    case 'pow': return 'power';
+    case 'sqrt': return '√ root';
+    case 'paren': return '( )';
+  }
+  return n.type;
+}
+
+/* ================= undo ================= */
+const undoStack = [];
+function snapshot() {
+  const s = state;
+  undoStack.push(JSON.stringify({ root, focusRow: s.focusRow,
+    pal: s.pal ? { row: s.pal.row, pos: s.pal.pos, lastNum: s.pal.lastNum } : null }));
+  if (undoStack.length > 300) undoStack.shift();
+}
+function undo() {
+  if (!undoStack.length) { toast('Nothing to undo'); return null; }
+  const snap = JSON.parse(undoStack.pop());
+  root = snap.root; reindex();
+  return snap;
+}
+
+/* ================= scanning state ================= */
+const state = {
+  mode: 'nav',        // nav | parts | actions | palette
+  focusRow: null,     // nav: the row whose items are being scanned
+  target: null,       // parts / actions: the node being acted on
+  list: [], i: 0,
+  pal: null,          // palette: { row, pos, rowI, inRow, keyI, lastNum, count }
+};
+
+const PALETTE = [
+  { kind: 'done', label: '✓ done', say: 'done' },
+  { label: 'digits', keys: '0123456789'.split('').map(d => ({ t: 'digit', v: d, label: d })) },
+  { label: 'letters', keys: ['x', 'y', 'n', 'a', 'b', 'c', 't'].map(v => ({ t: 'var', v, label: v })) },
+  { label: 'operators', keys: ['+', '−', '×', '='].map(v => ({ t: 'op', v, label: v })) },
+  { label: 'structures', keys: [
+      { t: 'frac', label: 'fraction', say: 'fraction' }, { t: 'exp', label: 'exponent', say: 'exponent' },
+      { t: 'sqrt', label: '√ root', say: 'square root' }, { t: 'paren', label: '( )', say: 'parentheses' }] },
+  { kind: 'backspace', label: '⌫ remove last', say: 'remove last' },
+];
+
+function buildList(keepIndex) {
+  const s = state; let list = [];
+  if (s.mode === 'nav') {
+    const r = byId(s.focusRow) || root; s.focusRow = r.id;
+    list = r.items.map(it => ({ kind: 'node', id: it.id, label: label(it), say: describe(it) }));
+    const blanks = emptyRows().filter(b => b.id !== r.id);
+    if (blanks.length) list.push({ kind: 'blank', id: blanks[0].id, label: '→ fill blank', say: 'fill the blank', cmd: true });
+    list.push({ kind: 'append', label: '+ add', say: 'add at the end', cmd: true });
+    list.push({ kind: 'undo', label: '↶ undo', say: 'undo', cmd: true });
+    list.push({ kind: 'export', label: '⤓ export', say: 'export', cmd: true });
+    if (r.id !== root.id) list.push({ kind: 'up', label: '↑ back', say: 'back up', cmd: true });
+  } else if (s.mode === 'parts') {
+    const n = byId(s.target);
+    list = subrows(n).map(([name, r]) => ({ kind: 'subrow', id: r.id, label: name, say: `${name}: ${describe(r)}` }));
+    list.push({ kind: 'delete', label: 'delete ' + label(n), say: 'delete this ' + label(n), cmd: true });
+    list.push({ kind: 'back', label: '← back', say: 'back', cmd: true });
+  } else if (s.mode === 'actions') {
+    list = [
+      { kind: 'replace', label: 'replace', say: 'replace' },
+      { kind: 'exp', label: 'add exponent', say: 'add exponent' },
+      { kind: 'wrapfrac', label: 'make fraction', say: 'make this the top of a fraction' },
+      { kind: 'insert', label: 'insert after', say: 'insert after' },
+      { kind: 'delete', label: 'delete', say: 'delete' },
+      { kind: 'back', label: '← back', say: 'back', cmd: true },
+    ];
+  }
+  s.list = list;
+  s.i = keepIndex == null ? 0 : Math.max(0, Math.min(keepIndex, list.length - 1));
+}
+
+function advance() {
+  const s = state;
+  if (s.mode === 'palette') {
+    const p = s.pal;
+    if (!p.inRow) p.rowI = (p.rowI + 1) % PALETTE.length;
+    else p.keyI = (p.keyI + 1) % (PALETTE[p.rowI].keys.length + 1);
+  } else if (s.list.length) {
+    s.i = (s.i + 1) % s.list.length;
+  }
+  render(); announce();
+}
+
+function select() {
+  const s = state;
+  if (s.mode === 'palette') paletteSelect();
+  else {
+    const item = s.list[s.i];
+    if (item) ({ nav: navSelect, parts: partsSelect, actions: actionsSelect })[s.mode](item);
+  }
+  render(); announce(); restartTimer();
+}
+
+function navSelect(item) {
+  const s = state, r = byId(s.focusRow);
+  switch (item.kind) {
+    case 'node': { const n = byId(item.id); s.target = n.id; s.mode = isLeaf(n) ? 'actions' : 'parts'; buildList(); break; }
+    case 'blank': enterPalette(item.id, 0); break;
+    case 'append': enterPalette(r.id, r.items.length); break;
+    case 'undo': { const snap = undo(); if (snap) s.focusRow = byId(snap.focusRow) ? snap.focusRow : root.id; buildList(); break; }
+    case 'export': doExport(); break;
+    case 'up': {
+      const c = parentOf(r.id), pr = c ? parentOf(c.id) : null;
+      if (pr) { s.focusRow = pr.id; buildList(positionIn(pr, c.id)); }
+      break;
+    }
+  }
+}
+function partsSelect(item) {
+  const s = state, n = byId(s.target), pr = parentOf(n.id);
+  switch (item.kind) {
+    case 'subrow': s.mode = 'nav'; s.focusRow = item.id; buildList(); break;
+    case 'delete': { snapshot(); const p = positionIn(pr, n.id); pr.items.splice(p, 1); reindex(); s.mode = 'nav'; s.focusRow = pr.id; buildList(p); break; }
+    case 'back': s.mode = 'nav'; s.focusRow = pr.id; buildList(positionIn(pr, n.id)); break;
+  }
+}
+function actionsSelect(item) {
+  const s = state, n = byId(s.target), pr = parentOf(n.id), p = positionIn(pr, n.id);
+  switch (item.kind) {
+    case 'replace': snapshot(); pr.items.splice(p, 1); reindex(); enterPalette(pr.id, p); break;
+    case 'exp': { snapshot(); const pw = pow(row([n]), row([])); pr.items.splice(p, 1, pw); reindex(); enterPalette(pw.exp.id, 0); break; }
+    case 'wrapfrac': { snapshot(); const f = frac(row([n]), row([])); pr.items.splice(p, 1, f); reindex(); enterPalette(f.den.id, 0); break; }
+    case 'insert': enterPalette(pr.id, p + 1); break;
+    case 'delete': snapshot(); pr.items.splice(p, 1); reindex(); s.mode = 'nav'; s.focusRow = pr.id; buildList(p); break;
+    case 'back': s.mode = 'nav'; s.focusRow = pr.id; buildList(p); break;
+  }
+}
+
+/* ================= palette (symbol entry) ================= */
+function enterPalette(rowId, pos) {
+  state.mode = 'palette';
+  state.pal = { row: rowId, pos, rowI: 1, inRow: false, keyI: 0, lastNum: null, count: 0 };
+}
+function exitPalette() {
+  const s = state, p = s.pal, r = byId(p.row);
+  s.mode = 'nav'; s.focusRow = r ? r.id : root.id; s.pal = null;
+  buildList(Math.max(0, p.pos - 1));
+}
+function paletteSelect() {
+  const p = state.pal;
+  if (!p.inRow) {
+    const entry = PALETTE[p.rowI];
+    if (entry.kind === 'done') return exitPalette();
+    if (entry.kind === 'backspace') return removeLast();
+    p.inRow = true; p.keyI = 0; return;
+  }
+  const keys = PALETTE[p.rowI].keys;
+  if (p.keyI >= keys.length) { p.inRow = false; return; }    // "← groups"
+  insertKey(keys[p.keyI]);
+  p.inRow = false; p.rowI = 0;                                  // land on ✓ done
+}
+function insertKey(k) {
+  const p = state.pal, r = byId(p.row);
+  snapshot(); p.count++;
+  const put = n => { r.items.splice(p.pos, 0, n); p.pos++; };
+  switch (k.t) {
+    case 'digit': {
+      const prev = r.items[p.pos - 1];
+      if (p.lastNum && prev && prev.id === p.lastNum) prev.text += k.v;     // multi-digit numbers
+      else { const n = num(k.v); put(n); p.lastNum = n.id; }
+      break;
+    }
+    case 'var': put(vr(k.v)); p.lastNum = null; break;
+    case 'op': put(op(k.v)); p.lastNum = null; break;
+    case 'frac': { const f = frac(row([]), row([])); put(f); p.row = f.num.id; p.pos = 0; p.lastNum = null; break; }
+    case 'sqrt': { const q = sqrt(row([])); put(q); p.row = q.child.id; p.pos = 0; p.lastNum = null; break; }
+    case 'paren': { const q = paren(row([])); put(q); p.row = q.child.id; p.pos = 0; p.lastNum = null; break; }
+    case 'exp': {
+      const prev = r.items[p.pos - 1];
+      if (prev) { const pw = pow(row([prev]), row([])); r.items.splice(p.pos - 1, 1, pw); p.row = pw.exp.id; p.pos = 0; }
+      else { const pw = pow(row([]), row([])); put(pw); p.row = pw.base.id; p.pos = 0; }
+      p.lastNum = null; break;
+    }
+  }
+  reindex();
+}
+function removeLast() {
+  const p = state.pal;
+  if (!p.count) { toast('Nothing to remove'); return; }
+  const snap = undo(); p.count--;
+  if (snap && snap.pal) { p.row = snap.pal.row; p.pos = snap.pal.pos; p.lastNum = snap.pal.lastNum; }
+  if (!byId(p.row)) exitPalette();
+}
+
+/* ================= export ================= */
+function doExport() {
+  const t = tex(root), ta = document.getElementById('latex');
+  ta.value = t;
+  try { if (navigator.clipboard) navigator.clipboard.writeText(t).catch(() => {}); } catch (e) {}
+  toast('LaTeX copied — paste into Word (Equation → LaTeX), Google Docs, or Overleaf');
+}
+
+/* ================= rendering ================= */
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+function caret() { return el('span', 'caret'); }
+function renderNode(n) {
+  const e = el('span', 'n ' + n.type); e.dataset.id = n.id;
+  switch (n.type) {
+    case 'row': {
+      const s = state, caretAt = (s.mode === 'palette' && s.pal.row === n.id) ? s.pal.pos : -1;
+      if (!n.items.length && caretAt < 0) { e.classList.add('empty'); e.textContent = '▢'; break; }
+      if (!n.items.length) e.classList.add('editing');
+      n.items.forEach((it, idx) => { if (idx === caretAt) e.appendChild(caret()); e.appendChild(renderNode(it)); });
+      if (caretAt === n.items.length) e.appendChild(caret());
+      break;
+    }
+    case 'num': case 'var': e.textContent = n.text; break;
+    case 'op': e.textContent = n.sym; break;
+    case 'frac': { const t = el('span', 'ftop'), b = el('span', 'fbot'); t.appendChild(renderNode(n.num)); b.appendChild(renderNode(n.den)); e.append(t, b); break; }
+    case 'pow': { e.appendChild(renderNode(n.base)); const x = el('span', 'exp'); x.appendChild(renderNode(n.exp)); e.appendChild(x); break; }
+    case 'sqrt': { const c = el('span', 'radicand'); c.appendChild(renderNode(n.child)); e.append(el('span', 'rad', '√'), c); break; }
+    case 'paren': { e.append(el('span', 'ptext', '('), renderNode(n.child), el('span', 'ptext', ')')); break; }
+  }
+  return e;
+}
+function mark(id, cls) { const e = document.querySelector(`#canvas [data-id="${id}"]`); if (e) e.classList.add(cls); }
+function key(text, cmd, scan) { const k = el('span', 'key' + (cmd ? ' cmd' : '') + (scan ? ' scan' : ''), text); return k; }
+
+function render() {
+  const s = state, canvas = document.getElementById('canvas');
+  canvas.innerHTML = ''; canvas.appendChild(renderNode(root));
+  if (s.mode === 'nav') {
+    mark(s.focusRow, 'focus');
+    const it = s.list[s.i]; if (it && (it.kind === 'node' || it.kind === 'blank')) mark(it.id, 'scan');
+  } else if (s.mode === 'parts') {
+    mark(s.target, 'focus');
+    const it = s.list[s.i]; if (it && it.kind === 'subrow') mark(it.id, 'scan');
+  } else if (s.mode === 'actions') {
+    mark(s.target, 'focus');
+  } else if (s.mode === 'palette') {
+    mark(s.pal.row, 'focus');
+  }
+  renderMenu();
+  document.getElementById('latex').value = tex(root);
+  document.getElementById('status').textContent = statusText();
+  document.getElementById('presses').textContent = 'Presses: ' + presses;
+}
+function renderMenu() {
+  const s = state, menu = document.getElementById('menu'); menu.innerHTML = '';
+  if (s.mode === 'palette') {
+    const p = s.pal;
+    PALETTE.forEach((entry, ri) => {
+      const r = el('div', 'prow' + (ri === p.rowI && !p.inRow ? ' scan' : ''));
+      if (entry.kind) r.appendChild(key(entry.label, true, false));
+      else {
+        r.appendChild(el('span', 'plabel', entry.label));
+        entry.keys.forEach((k, ki) => r.appendChild(key(k.label, k.t === 'frac' || k.t === 'exp' || k.t === 'sqrt' || k.t === 'paren', p.inRow && ri === p.rowI && ki === p.keyI)));
+        if (p.inRow && ri === p.rowI) r.appendChild(key('← groups', true, p.keyI === entry.keys.length));
+      }
+      menu.appendChild(r);
+    });
+  } else {
+    s.list.forEach((it, i) => menu.appendChild(el('span', 'chip' + (it.cmd ? ' cmd' : '') + (i === s.i ? ' scan' : ''), it.label)));
+  }
+}
+function statusText() {
+  const s = state;
+  switch (s.mode) {
+    case 'nav': { const r = byId(s.focusRow); return r.id === root.id ? 'Scanning the whole expression' : 'Scanning inside: ' + describe(r); }
+    case 'parts': return 'Which part of the ' + label(byId(s.target)) + '?';
+    case 'actions': return 'What do you want to do with “' + label(byId(s.target)) + '”?';
+    case 'palette': return s.pal.inRow ? 'Pick one' : 'Pick a group of symbols, or ✓ done';
+  }
+  return '';
+}
+
+/* ================= speech ================= */
+let audio = false;
+function announce() {
+  if (!audio || !('speechSynthesis' in window)) return;
+  const s = state; let text = '';
+  if (s.mode === 'palette') {
+    const p = s.pal, e = PALETTE[p.rowI];
+    text = !p.inRow ? (e.say || e.label) : (p.keyI >= e.keys.length ? 'back to groups' : (e.keys[p.keyI].say || OP_SAY[e.keys[p.keyI].v] || e.keys[p.keyI].label));
+  } else { const it = s.list[s.i]; text = it ? (it.say || it.label) : ''; }
+  try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.rate = 1.15; speechSynthesis.speak(u); } catch (e) {}
+}
+
+/* ================= the switch ================= */
+let presses = 0, scanMode = 'auto', speed = 900, holdMs = 600, timer = null, downAt = 0, isDown = false;
+function restartTimer() { if (timer) clearInterval(timer); timer = scanMode === 'auto' ? setInterval(advance, speed) : null; }
+function pressDown() {
+  if (isDown) return; isDown = true; presses++; downAt = performance.now();
+  if (scanMode === 'auto') select(); else render();
+}
+function pressUp() {
+  if (!isDown) return; isDown = false;
+  if (scanMode !== 'step') return;
+  if (performance.now() - downAt >= holdMs) select(); else advance();
+}
+const inField = t => t && (t.tagName === 'INPUT' || t.tagName === 'SELECT');
+window.addEventListener('keydown', e => {
+  if (inField(e.target)) return;
+  if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); if (!e.repeat) pressDown(); }
+});
+window.addEventListener('keyup', e => {
+  if (inField(e.target)) return;
+  if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); pressUp(); }
+});
+const sw = document.getElementById('switch');
+sw.addEventListener('pointerdown', e => { e.preventDefault(); pressDown(); });
+sw.addEventListener('pointerup', e => { e.preventDefault(); pressUp(); sw.blur(); });
+sw.addEventListener('pointercancel', () => { isDown = false; });
+sw.addEventListener('click', e => e.preventDefault());
+
+/* ================= setup panel ================= */
+const $ = id => document.getElementById(id);
+function applySettings() {
+  scanMode = $('mode').value; speed = +$('speed').value; holdMs = +$('hold').value; audio = $('audio').checked;
+  document.documentElement.style.setProperty('--mathsize', $('size').value + 'px');
+  $('speedv').textContent = (speed / 1000).toFixed(1) + ' s'; $('holdv').textContent = (holdMs / 1000).toFixed(2) + ' s';
+  $('modehelp').textContent = scanMode === 'auto'
+    ? 'The yellow highlight moves on its own. Press when it is on what you want.'
+    : 'Short press moves the highlight. Hold the switch to choose.';
+  restartTimer();
+}
+['mode', 'speed', 'hold', 'size', 'audio'].forEach(id => $(id).addEventListener('input', applySettings));
+$('load').addEventListener('click', () => { load($('example').value); $('load').blur(); });
+$('resetp').addEventListener('click', () => { presses = 0; render(); $('resetp').blur(); });
+function load(name) {
+  root = (EXAMPLES[name] || EXAMPLES.fraction)(); reindex(); undoStack.length = 0;
+  state.mode = 'nav'; state.focusRow = root.id; state.pal = null; state.target = null;
+  buildList(); render(); restartTimer();
+}
+function toast(msg) {
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+/* ================= start ================= */
+const q = new URLSearchParams(location.search);
+$('mode').value = q.get('mode') === 'step' ? 'step' : 'auto';
+$('speed').value = q.get('speed') || 900;
+$('hold').value = q.get('hold') || 600;
+$('size').value = q.get('size') || 46;
+$('audio').checked = q.get('audio') === '1';
+$('example').value = EXAMPLES[q.get('example')] ? q.get('example') : 'fraction';
+applySettings();
+load($('example').value);
+
+// for tests and for curious judges
+window.SM = { latex: () => tex(root), state, get presses() { return presses; }, select, advance, load };
+})();
+</script>
+</body>
+</html>
