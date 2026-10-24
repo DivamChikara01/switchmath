@@ -16,7 +16,7 @@ with sync_playwright() as p:
     pg = b.new_page(viewport={'width': 1240, 'height': 860})
     errors = []
     pg.on('pageerror', lambda e: errors.append(str(e)))
-    pg.goto(HTML + '?mode=step&hold=300')
+    pg.goto(HTML + '?mode=step&hold=300&help=0')
     pg.wait_for_timeout(200)
 
     counts = {'short': 0, 'long': 0}
@@ -79,11 +79,13 @@ with sync_playwright() as p:
 
     # ---- Task 4: export ---------------------------------------------------------
     short(3); long()           # export (available at every level)
-    toast = pg.locator('#toast').inner_text()
+    pg.wait_for_timeout(300)
     ta = pg.locator('#latex').input_value()
-    ok = ta == r'\frac{x^{2} + 1}{3} = y' and 'copied' in toast.lower()
+    last = pg.evaluate('SM.lastExport')
+    ok = ta == r'\frac{x^{2} + 1}{3} = y' and last is not None and last['text'] == ta and isinstance(last['copied'], bool)
+    print('   export outcome reported by the app:', 'copied to clipboard' if last and last['copied'] else 'clipboard unavailable -> fallback used')
     results.append(('T4 export', ok, ta, dict(counts)))
-    print(f"{'PASS' if ok else 'FAIL'} T4 export: textarea={ta!r} toast={toast!r} presses: short={counts['short']} long={counts['long']}")
+    print(f"{'PASS' if ok else 'FAIL'} T4 export: textarea={ta!r} presses: short={counts['short']} long={counts['long']}")
     counts['short'] = counts['long'] = 0
     pg.screenshot(path=str(SHOTS / '3_export.png'))
 
@@ -119,13 +121,21 @@ with sync_playwright() as p:
     pg.screenshot(path=str(SHOTS / '4_built.png'))
 
     # ---- auto-scan sanity: highlight advances by itself and a press selects
-    pg.goto(HTML + '?mode=auto&speed=300')
+    pg.goto(HTML + '?mode=auto&speed=300&help=0')
     pg.wait_for_timeout(1000)
+    pg.evaluate("SM.load('fraction')"); pg.wait_for_timeout(50)
     i1 = pg.evaluate('SM.state.i'); pg.wait_for_timeout(350); i2 = pg.evaluate('SM.state.i')
-    auto_ok = i1 != i2
+    advances = i1 != i2
+    # wait until the highlight is on the fraction, then one press must open its parts
+    found = False
+    for _ in range(400):                       # a full cycle at 300 ms/step is ~2.1 s; allow plenty
+        if pg.evaluate("SM.choice()") == 'fraction': found = True; break
+        pg.wait_for_timeout(10)
     pg.keyboard.press('Space'); pg.wait_for_timeout(50)
-    auto_ok = auto_ok and pg.evaluate('SM.state.mode') in ('parts', 'actions', 'palette') or pg.evaluate('SM.state.mode') == 'nav'
-    print('auto-scan advances by itself:', i1 != i2, '| mode after press:', pg.evaluate('SM.state.mode'))
+    mode_after = pg.evaluate('SM.state.mode')
+    auto_ok = advances and found and mode_after == 'parts'
+    results.append(('auto-scan: highlight advances by itself and one press selects', auto_ok, mode_after, {}))
+    print(('PASS' if auto_ok else 'FAIL') + f' auto-scan advances by itself ({advances}) and a press on the fraction opens its parts (mode={mode_after})')
 
     # quadratic renders without errors
     pg.evaluate("SM.load('quadratic')"); pg.wait_for_timeout(100)
